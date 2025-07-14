@@ -11,14 +11,24 @@
 
 
 
+USE AdventureWorks2022;
+
+
+
 --1. Mostrar el ID de los empleados que tienen más de 90 horas de vacaciones.
 --Tablas: HumanResources.Employee
 --Campos: VacationHours, BusinessEntityID
 
 
-
-
-
+SELECT 
+	BusinessEntityID, 
+	VacationHours
+FROM 
+	HumanResources.Employee
+WHERE
+	VacationHours > 90
+ORDER BY 
+	VacationHours DESC;
 
 
 
@@ -28,8 +38,12 @@
 --Campos: Name, ListPrice
 
 
-
-
+SELECT 
+	Name, 
+	ListPrice, 
+	CAST(ROUND(ListPrice * 1.21, 2) AS DECIMAL(10, 2)) AS [ListPrice + IVA]
+FROM
+	Production.Product;
 
 
 
@@ -39,10 +53,13 @@
 --Tablas: Production.Product
 --Campos: ProductID, Name, ListPrice
 
-
-
-
-
+SELECT 
+	Name, 
+	ListPrice
+FROM
+	Production.Product
+WHERE
+	ProductID IN (776, 777, 778);
 
 
 
@@ -52,10 +69,12 @@
 --Tablas: Person.Person
 --Campos: FirstName, LastName
 
-
-
-
-
+SELECT 
+	CONCAT(FirstName, ' ', LastName) AS FullName
+FROM
+	Person.Person
+WHERE 
+	LastName = 'Johnson';
 
 
 
@@ -65,9 +84,18 @@
 --Tablas: Production.Product
 --Campos: ProductID, ListPrice, Color 
 
-
-
-
+SELECT
+	ProductID,
+	ListPrice, 
+	Color
+FROM
+	Production.Product
+WHERE
+	(Color = 'Red' AND ListPrice < 150)
+	OR
+	(Color = 'Black' AND ListPrice > 500)
+ORDER BY
+	Color DESC;
 
 
 
@@ -77,7 +105,16 @@
 --Tablas: HumanResources.Employee
 --Campos: BusinessEntityID, HireDate, VacationHours
 
-
+SELECT
+	BusinessEntityID,
+	HireDate,
+	VacationHours
+FROM
+	HumanResources.Employee
+WHERE
+	YEAR(HireDate) >= 2000
+ORDER BY
+	HireDate;
 
 
 
@@ -89,8 +126,15 @@
 --Tablas: Production.Product
 --Campos: Name, ProductNumber, ListPrice, SellEndDate
 
-
-
+SELECT
+	ProductNumber,
+	Name,
+	ListPrice,
+	CAST(ROUND(ListPrice * 1.10, 2) AS DECIMAL(10, 2)) AS [ListPrice + 10%]
+FROM
+	Production.Product
+WHERE
+	SellEndDate < GETDATE();
 
 
 
@@ -102,8 +146,12 @@
 --Campos: BusinessEntityID, TerritoryID 
 
 
-
-
+SELECT
+	BusinessEntityID
+FROM
+	Sales.SalesPerson
+WHERE
+	TerritoryID IS NULL;
 
 
 
@@ -113,21 +161,30 @@
 --Tablas: Production.Product
 --Campos: ProductID, Weight
 
+SELECT
+	ProductID,
+	COALESCE(Weight, 0) AS Weight
+FROM
+	Production.Product;
 
 
 
 
 
 
-
-
--- 10. Mostrar el nombre, precio y color de los accesorios para asientos, las bicicletas cuyo precio sea mayor a 100 dólares.
+-- 10. Mostrar el nombre, precio y color de los accesorios para asientos de las bicicletas cuyo precio sea mayor a 100 dólares.
 --Tablas: Production.Product
 --Campos: Name, ListPrice, Color
 
-
-
-
+SELECT
+	Name, 
+	ListPrice, 
+	Color
+FROM
+	Production.Product
+WHERE
+	Name LIKE '%seat%'
+	AND ListPrice > 100;
 
 
 
@@ -137,9 +194,13 @@
 --Tablas: Production.Product
 --Campos: ListPrice 
 
-
-
-
+SELECT
+	ProductID,
+	ListPrice
+FROM
+	Production.Product
+WHERE
+	ListPrice BETWEEN 200 AND 300;
 
 
 
@@ -150,20 +211,34 @@
 --Campos: BirthDate
 
 
+SELECT
+	BusinessEntityID,
+	BirthDate
+FROM
+	HumanResources.Employee
+WHERE
+	YEAR(BirthDate) BETWEEN 1970 AND 1985
+ORDER BY
+	BirthDate;
 
 
 
 
-
-
-
--- 13. Mostrar la fecha, número de cuenta y subtotal de las órdenes de venta efectuadas en los años 2005 y 2006.
+-- 13. Mostrar la fecha, número de cuenta y subtotal de las órdenes de venta efectuadas en los años 2011 y 2012.
 --Tablas: Sales.SalesOrderHeader
 --Campos: OrderDate, AccountNumber, SubTotal
 
 
-
-
+SELECT
+	OrderDate,
+	AccountNumber,
+	SubTotal
+FROM
+	Sales.SalesOrderHeader
+WHERE
+	YEAR(OrderDate) IN (2011, 2012)
+ORDER BY
+	OrderDate;
 
 
 
@@ -174,9 +249,14 @@
 --Campos: OrderDate, AccountNumber, SubTotal
 
 
-
-
-
+SELECT
+	OrderDate,
+	AccountNumber,
+	SubTotal
+FROM
+	Sales.SalesOrderHeader
+WHERE
+	SubTotal NOT BETWEEN 50 AND 70;
 
 
 
@@ -186,19 +266,36 @@
 --Campos: SalesOrderID, OrderQty, ProductID, UnitPrice 
 
 
+SELECT
+	SalesOrderId,
+	ProductID,
+	OrderQty,
+	UnitPrice
+FROM
+	Sales.SalesOrderDetail
+WHERE
+	ProductID IN (750, 753, 770)
+ORDER BY
+	ProductID;
 
 
 
 
-
-
-
--- 16. Mostrar todos los productos cuyo color sea verde, blanco y azul.
+-- 16. Mostrar todos los productos cuyo color sea verde, blanco o azul.
 --Tablas: Production.Product
 --Campos: Color
 
 
-
+SELECT
+	ProductID,
+	Name,
+	Color
+FROM
+	Production.Product
+WHERE
+	Color IN ('Green', 'White', 'Blue')
+ORDER BY
+	Color;
 
 
 
@@ -209,10 +306,13 @@
 --Tablas: Person.Person
 --Campos: Firstname, Lastname 
 
-
-
-
-
+SELECT
+	FirstName,
+	LastName
+FROM
+	Person.Person
+ORDER BY
+	LastName, FirstName;
 
 
 
@@ -220,3 +320,12 @@
 -- 18. Mostrar los cinco productos más caros y su nombre, ordenados en forma alfabética.
 --Tablas: Production.Product
 --Campos: Name, ListPrice
+
+
+SELECT TOP 5
+	Name,
+	ListPrice
+FROM
+	Production.Product
+ORDER BY
+	ListPrice DESC, Name ASC;

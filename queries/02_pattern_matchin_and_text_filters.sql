@@ -10,13 +10,19 @@
 */
 
 
+USE AdventureWorks2022;
+
+
 -- 1. Mostrar el nombre de los productos que tengan cualquier combinación de ‘mountain bike’.
 --Tablas: Production.Product
 --Campos: Name
 
-
-
-
+SELECT
+	Name
+FROM
+	Production.Product
+WHERE
+	Name LIKE '%mountain bike%';
 
 
 
@@ -26,9 +32,12 @@
 --Tablas: Person.Person
 --Campos: FirstName
 
-
-
-
+SELECT
+	CONCAT(FirstName, ' ', LastName) as FullName
+FROM
+	Person.Person
+WHERE
+	FirstName LIKE 'Y%';
 
 
 
@@ -39,9 +48,12 @@
 --Campos: LastName
 
 
-
-
-
+SELECT
+	CONCAT(FirstName, ' ', LastName) as FullName
+FROM
+	Person.Person
+WHERE
+	LastName LIKE '_s%';
 
 
 
@@ -50,10 +62,12 @@
 --Tablas: Person.Person
 --Campos: FirstName, LastName
 
-
-
-
-
+SELECT
+	CONCAT(FirstName, ' ', LastName) as FullName
+FROM
+	Person.Person
+WHERE
+	LastName LIKE '%ez';
 
 
 
@@ -63,7 +77,12 @@
 --Campos: Name
 
 
-
+SELECT
+	Name
+FROM
+	Production.Product
+WHERE
+	Name LIKE '%[0-9]';
 
 
 
@@ -74,3 +93,15 @@
 -- como tercer carácter, cualquiera entre ‘j’ y ‘r’ o entre ‘s’ y ‘w’ como cuarto carácter y el resto sin restricciones.
 --Tablas: Person.Person
 --Campos: FirstName
+
+SELECT
+	CONCAT(FirstName, ' ', LastName) AS FullName
+FROM
+	Person.Person
+WHERE
+	FirstName LIKE '[Cc]_[^defg][j-r]%'
+	OR
+	FirstName LIKE '[Cc]_[^defg][s-w]%';
+
+-- NOTA: SQL Server no admite expresiones regulares como REGEXP o SIMILAR TO.
+-- Por eso, se resuelve este patrón usando múltiples condiciones LIKE
