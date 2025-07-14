@@ -329,3 +329,29 @@ FROM
 	Production.Product
 ORDER BY
 	ListPrice DESC, Name ASC;
+
+
+
+-- 19. Mostrar todos los productos vendidos y ordenados.
+--Tablas: Sales.SalesOrderDetail
+--Campos: ProductID
+
+SELECT
+	ProductID
+FROM
+	Sales.SalesOrderDetail
+ORDER BY
+	ProductID;
+
+
+
+-- 20. Mostrar los diferentes productos vendidos y ordenados.
+--Tablas: Sales.SalesOrderDetail, Production.WorkOrder
+--Campos: ProductID
+
+SELECT
+	DISTINCT ProductID
+FROM
+	Sales.SalesOrderDetail
+ORDER BY
+	ProductID;

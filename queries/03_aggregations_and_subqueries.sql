@@ -24,8 +24,44 @@ FROM
 
 
 
+-- 2. Mostrar el precio más barato de todas las bicicletas.
+--Tablas: Production.Product
+--Campos: ListPrice, Name
 
--- 2. Mostrar la cantidad de ventas y el total vendido.
+
+
+SELECT
+	MIN(ListPrice) as MinBikePrice
+FROM
+	Production.Product
+WHERE
+	ProductSubcategoryID IN (1, 2, 3);
+
+
+
+
+-- 3. Mostrar la fecha de nacimiento del empleado más joven.
+--Tablas: HumanResources.Employee
+--Campos: BirthDate
+
+
+SELECT
+	MAX(BirthDate)
+FROM
+	HumanResources.Employee;
+
+
+-- 4. Mostrar la fecha más reciente de venta.
+--Tablas: Sales.SalesOrderHeader
+--Campos: OrderDate
+
+SELECT
+	MAX(OrderDate)
+FROM
+	Sales.SalesOrderHeader;
+
+
+-- 5. Mostrar la cantidad de ventas y el total vendido.
 --Tablas: Sales.SalesOrderDetail
 --Campos: LineTotal
 
@@ -38,7 +74,7 @@ FROM
 
 
 
--- 3. Mostrar los productos y la cantidad total vendida de cada uno de ellos, ordenados por el total vendido.
+-- 6. Mostrar los productos y la cantidad total vendida de cada uno de ellos, ordenados por el total vendido.
 --Tablas: Sales.SalesOrderDetail
 
 
@@ -53,7 +89,9 @@ ORDER BY
 
 
 
--- 5. Mostrar el promedio vendido por factura.
+
+
+-- 7. Mostrar el promedio vendido por factura.
 --Tablas: Sales.SalesOrderDetail
 
 
@@ -65,7 +103,7 @@ FROM
 
 
 
--- 6. Mostrar todas las facturas realizadas y el total facturado de cada una de ellas, ordenado por número de factura,
+-- 8. Mostrar todas las facturas realizadas y el total facturado de cada una de ellas, ordenado por número de factura,
 --    pero sólo de aquellas órdenes que superen un total de $10.000.
 --Tablas: Sales.SalesOrderDetail
 
@@ -83,7 +121,7 @@ HAVING
 
 
 
--- 7. Mostrar la cantidad de facturas que vendieron más de 20 unidades.
+-- 9. Mostrar la cantidad de facturas que vendieron más de 20 unidades.
 --Tablas: Sales.SalesOrderDetail
 
 
@@ -102,7 +140,7 @@ FROM
 
 
 
--- 8. Mostrar todos los códigos de subcategorías existentes junto con la cantidad para los productos cuyo
+-- 10. Mostrar todos los códigos de subcategorías existentes junto con la cantidad para los productos cuyo
 --    precio de lista sea mayor a $70 y el precio promedio sea mayor a $300.
 --Tablas: Production.Product
 
@@ -122,7 +160,7 @@ HAVING
 
 
 
--- 9. Mostrar el código de subcategoría y el precio del producto más barato de cada una de ellas.
+-- 11. Mostrar el código de subcategoría y el precio del producto más barato de cada una de ellas.
 --Tablas: Production.Product
 
 
@@ -136,7 +174,7 @@ GROUP BY
 
 
 
--- 10. Mostrar las subcategorías que tienen dos o más productos que cuestan menos de $150.
+-- 12. Mostrar las subcategorías que tienen dos o más productos que cuestan menos de $150.
 --Tablas: Production.Product
 
 SELECT
@@ -157,7 +195,7 @@ WHERE
 
 
 
--- 11. Mostrar el número de factura, el monto vendido, y al final, totalizar la facturación.
+-- 13. Mostrar el número de factura, el monto vendido, y al final, totalizar la facturación.
 --Tablas: Sales.SalesOrderDetail
 
 
