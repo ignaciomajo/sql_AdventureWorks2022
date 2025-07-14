@@ -219,3 +219,36 @@ ORDER BY
 	'Order';
 
 -- NOTA: Se agrega la columna 'Order' para garantizar que el total se encuentre al final.
+
+
+
+-- 14. Mostrar las órdenes de venta que incluyen más de 3 productos distintos.
+--Tablas: Sales.SalesOrderDetail
+--Campos: SalesOrderID, ProductID
+
+SELECT
+	sod.SalesOrderID
+FROM
+	Sales.SalesOrderDetail sod
+GROUP BY
+	sod.SalesOrderID
+HAVING
+	COUNT(sod.ProductID) > 3;
+
+
+
+-- 15. Mostrar los productos que han sido vendidos en más de 5 facturas diferentes, junto con la cantidad de facturas.
+--Tablas: Sales.SalesOrderDetail
+--Campos: ProductID, SalesOrderID
+
+SELECT
+	ProductID,
+	COUNT(SalesOrderID) AS [OrdersQty]
+FROM
+	Sales.SalesOrderDetail
+GROUP BY
+	ProductID
+HAVING
+	COUNT(SalesOrderID) > 5
+ORDER BY
+	[OrdersQty] DESC;
