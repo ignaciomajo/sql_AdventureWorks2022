@@ -252,3 +252,256 @@ HAVING
 	COUNT(SalesOrderID) > 5
 ORDER BY
 	[OrdersQty] DESC;
+
+
+
+-- 16. Listar todos los productos cuyo precio sea inferior al precio promedio de todos los productos.
+-- Tablas: Production.Product
+-- Campos: Name, ListPrice
+
+SELECT
+	ProductID, ListPrice
+FROM
+	Production.Product
+WHERE
+	ListPrice < (SELECT AVG(ListPrice) FROM Production.Product)
+
+
+
+-- 17. Listar el nombre, precio de lista, precio promedio y diferencia de precios entre cada producto y el valor promedio general.
+-- Tablas: Production.Product
+-- Campos: Name, ListPrice
+
+SELECT
+	Name,
+	ListPrice,
+	(SELECT AVG(ListPrice) FROM Production.Product) AS AvgPrice,
+	ListPrice - (SELECT AVG(ListPrice) FROM Production.Product)  AS Diff
+FROM
+	Production.Product;
+
+
+
+-- 18. Mostrar el o los códigos del producto más caro.
+-- Tablas: Production.Product
+-- Campos: ProductID, ListPrice
+
+SELECT
+	p1.ProductID
+FROM
+	Production.Product p1
+WHERE
+	ListPrice = (SELECT
+					MAX(p2.ListPrice)
+				FROM
+					Production.Product p2);
+
+
+
+-- 19. Mostrar el producto más barato de cada subcategoría. Mostrar subcategoría, código de producto y el precio de lista más barato ordenado por subcategoría.
+-- Tablas: Production.Product
+-- Campos: ProductSubcategoryID, ProductID, ListPrice
+
+SELECT 
+    p1.ProductSubcategoryID,
+    p1.ProductID,
+    p1.ListPrice
+FROM 
+    Production.Product p1
+WHERE 
+    p1.ListPrice = (
+        SELECT MIN(p2.ListPrice)
+        FROM Production.Product p2
+        WHERE p2.ProductSubcategoryID = p1.ProductSubcategoryID
+    )
+    AND p1.ProductSubcategoryID IS NOT NULL
+ORDER BY 
+    p1.ProductSubcategoryID;
+
+						
+
+
+
+-- 20. Mostrar todos los productos que no fueron vendidos.
+-- Tablas: Production.Product, Sales.SalesOrderDetail
+-- Campos: Name, ProductID
+
+SELECT
+	ProductID,
+	Name
+FROM
+	Production.Product
+WHERE
+	ProductID NOT IN (SELECT
+						DISTINCT ProductID
+					  FROM
+						Sales.SalesOrderDetail)
+
+
+
+-- 21. Mostrar la cantidad de personas que no son vendedores.
+-- Tablas: Person.Person, Sales.SalesPerson
+-- Campos: BusinessEntityID
+
+
+SELECT
+	COUNT(p.BusinessEntityID) AS NonSalesPersons
+FROM
+	Person.Person p
+WHERE
+	p.BusinessEntityID NOT IN (SELECT
+								BusinessEntityID
+							 FROM
+								Sales.SalesPerson)
+
+
+
+
+-- 22. Mostrar todos los vendedores (nombre y apellido) que no tengan asignado un territorio de ventas.
+-- Tablas: Person.Person, Sales.SalesPerson
+-- Campos: BusinessEntityID, TerritoryID, LastName, FirstName
+
+
+SELECT
+	CONCAT(pp.FirstName, ' ', pp.LastName) AS FullName
+FROM
+	Person.Person pp
+WHERE
+	pp.BusinessEntityID IN (SELECT
+								sp.BusinessEntityID
+							FROM
+								Sales.SalesPerson sp
+							WHERE
+								TerritoryID IS NULL);
+
+
+
+-- 23. Mostrar las órdenes de venta que se hayan facturado en territorio de Estados Unidos únicamente (código: "US").
+-- Tablas: Sales.SalesOrderHeader, Sales.SalesTerritory
+-- Campos: CountryRegionCode, TerritoryID
+
+
+SELECT
+	soh.SalesOrderID
+FROM
+	Sales.SalesOrderHeader soh
+WHERE
+	soh.TerritoryID IN (SELECT
+							st.TerritoryID
+						FROM
+							Sales.SalesTerritory st
+						WHERE
+							CountryRegionCode = 'US')
+
+
+
+
+-- 24. Mostrar las órdenes de venta facturadas en territorios de Estados Unidos, Francia e Inglaterra.
+-- Tablas: Sales.SalesOrderHeader, Sales.SalesTerritory
+-- Campos: CountryRegionCode, TerritoryID
+
+
+SELECT
+	soh.SalesOrderID
+FROM
+	Sales.SalesOrderHeader soh
+WHERE
+	soh.TerritoryID IN (SELECT
+							st.TerritoryID
+						FROM
+							Sales.SalesTerritory st
+						WHERE
+							CountryRegionCode IN ('US', 'FR', 'GB'));
+
+
+
+-- 25. Mostrar los nombres de los diez productos más caros.
+-- Tablas: Production.Product
+-- Campos: Name, ListPrice
+
+
+SELECT TOP 10
+	p1.Name,
+	p1.ListPrice
+FROM
+	Production.Product p1
+ORDER BY
+	ListPrice DESC;
+
+
+
+-- 26. Mostrar los productos cuya cantidad total de pedidos de venta sea igual o superior a 20.
+-- Tablas: Production.Product, Sales.SalesOrderDetail
+-- Campos: Name, ProductID, OrderQty
+
+
+
+SELECT
+	ProductID,
+	Name
+FROM
+	Production.Product
+WHERE
+	ProductID IN (SELECT
+					ProductID
+				  FROM
+					Sales.SalesOrderDetail
+				  GROUP BY
+					ProductID
+				  HAVING
+					SUM(OrderQty) > 20)
+
+
+-- 27. Mostrar los nombres de todos los productos relacionados con ruedas.
+-- Tablas: Production.Product, Production.ProductSubcategory
+-- Campos: Name, ProductSubcategoryID
+
+
+SELECT
+	pp.Name
+FROM
+	Production.Product pp
+WHERE
+	pp.ProductSubcategoryID IN (SELECT
+									ppsc.ProductSubcategoryID
+								FROM
+									Production.ProductSubcategory ppsc
+								WHERE
+									ppsc.Name LIKE '%wheel%')
+
+
+
+-- 28. Mostrar los clientes ubicados en un territorio no cubierto por ningún vendedor.
+-- Tablas: Sales.Customer, Sales.SalesPerson
+-- Campos: TerritoryID
+
+
+SELECT
+	sc.CustomerID
+FROM
+	Sales.Customer sc
+WHERE
+	sc.TerritoryID	NOT IN (SELECT DISTINCT
+								sp.TerritoryID
+							FROM
+								Sales.SalesPerson sp)
+
+
+
+-- 29. Listar los productos cuyos precios de venta sean mayores o iguales que el precio de venta máximo de cualquier subcategoría.
+-- Tablas: Production.Product
+-- Campos: Name, ListPrice, ProductSubcategoryID
+
+
+SELECT
+	pp.Name,
+	pp.ListPrice
+FROM
+	Production.Product pp
+WHERE
+	pp.ListPrice >= ALL(SELECT
+							MAX(pp2.ListPrice)
+						FROM
+							Production.Product pp2
+						GROUP BY
+							pp2.ProductSubcategoryID);
