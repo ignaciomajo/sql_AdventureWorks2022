@@ -12,10 +12,11 @@
 
 USE AdventureWorks2022;
 
-
+------------------------------------------------------------------------------------------------------------------------
 -- 1. Mostrar los empleados que también son vendedores.
 -- Tablas: HumanResources.Employee, Sales.SalesPerson
 -- Campos: BusinessEntityID
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	hr.BusinessEntityID
@@ -25,14 +26,11 @@ JOIN
 	Sales.SalesPerson sp
 ON hr.BusinessEntityID = sp.BusinessEntityID;
 
-
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 2. Mostrar los empleados ordenados alfabéticamente por apellido y por nombre.
 -- Tablas: HumanResources.Employee, Person.Person
 -- Campos: BusinessEntityID, LastName, FirstName
-
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	hr.BusinessEntityID,
@@ -47,12 +45,11 @@ ON
 ORDER BY
 	LastName, FirstName;
 
-
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 3. Mostrar el código de logueo, código de territorio y bono de los vendedores.
 -- Tablas: HumanResources.Employee, Sales.SalesPerson
 -- Campos: LoginID, TerritoryID, Bonus, BusinessEntityID
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	hr.LoginID, sp.TerritoryID, sp.Bonus
@@ -62,13 +59,11 @@ JOIN
 	Sales.SalesPerson sp
 ON hr.BusinessEntityID = sp.BusinessEntityID;
 
-
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 4. Mostrar los productos que sean ruedas.
 -- Tablas: Production.Product, Production.ProductSubcategory
 -- Campos: Name, ProductSubcategoryID
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	pp.Name
@@ -81,12 +76,11 @@ ON
 WHERE
 	pps.Name = 'Wheels';
 
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 5. Mostrar los nombres de los productos que no son bicicletas.
 -- Tablas: Production.Product, Production.ProductSubcategory
 -- Campos: Name, ProductSubcategoryID
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	pp.Name
@@ -99,14 +93,12 @@ ON
 WHERE
 	pps.Name NOT LIKE '%Bikes';
 
-
-
-
-
--- 6. Mostrar los precios de venta de aquellos productos donde el precio de venta sea inferior al precio de lista recomendado para ese producto,
---    ordenados por nombre de producto.
+------------------------------------------------------------------------------------------------------------------------
+-- 6. Mostrar los precios de venta de aquellos productos donde el precio de venta sea inferior al precio de lista 
+--    recomendado para ese producto, ordenados por nombre de producto.
 -- Tablas: Sales.SalesOrderDetail, Production.Product
 -- Campos: ProductID, Name, ListPrice, UnitPrice
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	pp.Name,
@@ -123,15 +115,12 @@ WHERE
 ORDER BY
 	pp.Name;
 
-
-
-
-
--- 7. Mostrar todos los productos que tengan igual precio. Se deben mostrar de a pares, código y nombre de cada uno de los dos productos y el precio de ambos. 
---    Ordenar por precio en forma descendente.
+------------------------------------------------------------------------------------------------------------------------
+-- 7. Mostrar todos los productos que tengan igual precio. Se deben mostrar de a pares, código y nombre de cada uno de 
+--    los dos productos y el precio de ambos. Ordenar por precio en forma descendente.
 -- Tablas: Production.Product
 -- Campos: ProductID, ListPrice, Name
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT 
 	pp1.ProductID, 
@@ -150,13 +139,11 @@ WHERE
 ORDER BY
 	ListPrice DESC;
 
-
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 8. Mostrar el nombre de los productos y de los proveedores cuya subcategoría es 15 ordenados por nombre de proveedor.
 -- Tablas: Production.Product, Purchasing.ProductVendor, Purchasing.Vendor
 -- Campos: Name, ProductID, BusinessEntityID, ProductSubcategoryID
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	pp.Name as [ProductName],
@@ -176,15 +163,12 @@ WHERE
 ORDER BY
 	VendorName;
 		
-
-
-
-
-
--- 9. Mostrar todas las personas (nombre y apellido) y en el caso de que sean empleados mostrar también el login ID, caso contrario mostrar NULL.
+------------------------------------------------------------------------------------------------------------------------
+-- 9. Mostrar todas las personas (nombre y apellido) y en el caso de que sean empleados mostrar también el login ID, 
+--    caso contrario mostrar NULL.
 -- Tablas: Person.Person, HumanResources.Employee
 -- Campos: FirstName, LastName, LoginID
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	CONCAT(perp.FirstName, ' ', perp.LastName) as FullName,
@@ -196,9 +180,10 @@ LEFT JOIN
 ON
 	perp.BusinessEntityID = hr.BusinessEntityID;
 
-
+------------------------------------------------------------------------------------------------------------------------
 -- 10. Mostrar el nombre completo de todos los empleados junto con el nombre de su cargo (JobTitle).
 --Tablas: HumanResources.Employee, Person.Person
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	CONCAT(pp.FirstName, ' ', pp.LastName) AS [FullName],
@@ -212,13 +197,10 @@ ON
 ORDER BY
 	hr.JobTitle;
 
-
-
-
-
+------------------------------------------------------------------------------------------------------------------------v
 -- 11. Listar el nombre de los productos junto con el nombre de su subcategoría y categoría.
 --Tablas: Production.Product, Production.ProductSubcategory, Production.ProductCategory
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	prodp.Name AS [Product],
@@ -235,13 +217,10 @@ JOIN
 ON
 	prodsbc.ProductCategoryID = prodc.ProductCategoryID;
 
-
-
-
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 12. Mostrar el nombre de los vendedores, su territorio y la región a la que pertenece.
 --Tablas: Sales.SalesPerson, Sales.SalesTerritory, Person.Person
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	CONCAT(pp.FirstName, ' ', pp.LastName) AS [FullName],
@@ -262,13 +241,10 @@ JOIN
 ON
 	st.CountryRegionCode = cr.CountryRegionCode;
 	
-	
-
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 13. Mostrar el nombre de todos los empleados junto con su número de teléfono (si tienen).
 --Tablas: HumanResources.Employee, Person.PersonPhone, Person.Person
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	CONCAT(pp.FirstName, ' ', pp.LastName) AS [FullName],
@@ -284,21 +260,10 @@ LEFT JOIN
 ON
 	pp.BusinessEntityID = ppp.BusinessEntityID;
 
-
-
-
--- 14. Mostrar los nombres de los productos junto con el nombre de su proveedor principal.
---Tablas: Production.Product, Purchasing.ProductVendor, Purchasing.Vendor
-
-
-
--- No lo completé porque si te fijas esta misma consulta la pedía el curso. Consigna 8
-
-
-
--- 15. Mostrar los nombres de los productos junto con la cantidad total vendida de cada uno.
+------------------------------------------------------------------------------------------------------------------------
+-- 14. Mostrar los nombres de los productos junto con la cantidad total vendida de cada uno.
 -- Tablas: Production.Product, Sales.SalesOrderDetail
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	prodp.Name,
@@ -312,12 +277,10 @@ ON
 GROUP BY
 	prodp.Name;
 
-
-
-
--- 16. Mostrar todas las órdenes de venta junto con el nombre del empleado que las gestionó.
+------------------------------------------------------------------------------------------------------------------------
+-- 15. Mostrar todas las órdenes de venta junto con el nombre del empleado que las gestionó.
 -- Tablas: Sales.SalesOrderHeader, Sales.SalesPerson, Person.Person
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	soh.SalesOrderNumber,
@@ -335,13 +298,10 @@ ON
 ORDER BY
 	FullName;
 
-
-
-
-
--- 17. Mostrar todas las personas que no son empleados.
+------------------------------------------------------------------------------------------------------------------------
+-- 16. Mostrar todas las personas que no son empleados.
 --Tablas: Person.Person, HumanResources.Employee
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	CONCAT(pp.FirstName, ' ', pp.LastName) AS [FullName]
@@ -350,12 +310,10 @@ FROM
 WHERE
 	pp.BusinessEntityID NOT IN (SELECT BusinessEntityID FROM HumanResources.Employee);
 
--- NO SE ME OCURRIÓ COMO HACERLO CON JOIN
-
-
--- 18. Mostrar los nombres de productos que tengan más de un proveedor asociado.
+------------------------------------------------------------------------------------------------------------------------
+-- 17. Mostrar los nombres de productos que tengan más de un proveedor asociado.
 --Tablas: Production.Product, Purchasing.ProductVendor
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	prodp.Name
@@ -370,10 +328,10 @@ GROUP BY
 HAVING
 	COUNT(*) > 1;
 
-
-
--- 19. Mostrar todas las subcategorías de productos que no tienen productos asociados.
+------------------------------------------------------------------------------------------------------------------------
+-- 18. Mostrar todas las subcategorías de productos que no tienen productos asociados.
 --Tablas: Production.ProductSubcategory, Production.Product
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	prodsbc.Name
@@ -386,11 +344,10 @@ ON
 WHERE
 	pp.ProductSubcategoryID IS NULL;
 
-
-
--- 20. Listar los nombres de empleados que han gestionado ventas en más de un territorio.
+------------------------------------------------------------------------------------------------------------------------
+-- 19. Listar los nombres de empleados que han gestionado ventas en más de un territorio.
 --Tablas: Sales.SalesPerson, Sales.SalesOrderHeader, Person.Person, Sales.SalesTerritory
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	CONCAT(pp.FirstName, ' ', pp.LastName) AS [FullName]
@@ -409,12 +366,10 @@ GROUP BY
 HAVING
 	COUNT(DISTINCT soh.TerritoryID) > 1;
 
-
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 21. Mostrar los nombres de productos que tienen proveedores, pero ningún pedido registrado en SalesOrderDetail.
 --Tablas: Production.Product, Purchasing.ProductVendor, Sales.SalesOrderDetail
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	prodp.Name,
@@ -433,12 +388,11 @@ ON
 WHERE
 	SalesOrderID IS NULL;
 
-
-
-
-
--- 22. Mostrar: nombre completo, JobTitle, HireDate de los empleados que comparten el mismo título de trabajo y fecha de contratación exacta.
+------------------------------------------------------------------------------------------------------------------------
+-- 22. Mostrar: nombre completo, JobTitle, HireDate de los empleados que comparten el mismo título de trabajo y 
+--     fecha de contratación exacta.
 --Tablas: HumanResources.Employee, Person.Person
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	CONCAT(pp.FirstName, ' ', pp.LastName) AS [FullName],
@@ -460,3 +414,6 @@ AND
 	hr1.BusinessEntityID != hr2.BusinessEntityID
 ORDER BY
 	hr1.HireDate;
+
+
+-- =====================================================================================================================

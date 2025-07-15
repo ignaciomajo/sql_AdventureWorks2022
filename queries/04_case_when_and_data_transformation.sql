@@ -12,11 +12,12 @@
 
 USE AdventureWorks2022;
 
-
+-------
+-----------------------------------------------------------------------------------------------------------------
 -- 1. Obtener el ID y una columna denominada sexo cuyos valores disponibles sean “Masculino” y “Femenino”.
 --Tablas: HumanResources.Employee
 --Campos: BusinessEntityID, Gender
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	BusinessEntityID,
@@ -27,12 +28,11 @@ SELECT
 FROM
 	HumanResources.Employee;
 
-
-
+------------------------------------------------------------------------------------------------------------------------
 -- 2. Mostrar el ID de los empleados. Si tiene salario deberá mostrarse descendente, de lo contrario ascendente.
 --Tablas: HumanResources.Employee
 --Campos: BusinessEntityID, SalariedFlag
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	BusinessEntityID,
@@ -47,11 +47,12 @@ ORDER BY
 		WHEN SalariedFlag = 0
 		THEN BusinessEntityID END ASC;
 
-
--- 3. Mostrar el ID y un indicador de antigüedad que diga ‘Reciente’ si ingresó a partir de 2015, y ‘Antiguo’ en caso contrario.
+------------------------------------------------------------------------------------------------------------------------
+-- 3. Mostrar el ID y un indicador de antigüedad que diga ‘Reciente’ si ingresó a partir de 2015, y ‘Antiguo’ en caso 
+--    contrario.
 --Tabla: HumanResources.Employee
 --Campos: BusinessEntityID, HireDate
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	BusinessEntityId,
@@ -62,13 +63,12 @@ SELECT
 FROM
 	HumanResources.Employee;
 
-
-
-
--- 4. Mostrar el nombre de los productos, su precio, y una etiqueta que indique si el producto es ‘Económico’ (menos de $100), ‘Medio’ (entre $100 y $500), o ‘Premium’ (más de $500).
+------------------------------------------------------------------------------------------------------------------------
+-- 4. Mostrar el nombre de los productos, su precio, y una etiqueta que indique si el producto es ‘Económico’ (menos de $100), 
+--    ‘Medio’ (entre $100 y $500), o ‘Premium’ (más de $500).
 --Tabla: Production.Product
 --Campos: Name, ListPrice
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	Name,
@@ -81,13 +81,12 @@ SELECT
 FROM
 	Production.Product;
 
-
-
-
-
--- 5. Mostrar las órdenes de venta con su número, subtotal y una categoría de tamaño: ‘Pequeña’ si el subtotal es menor a $1000, ‘Mediana’ si está entre $1000 y $5000, y ‘Grande’ si es mayor a $5000.
+------------------------------------------------------------------------------------------------------------------------
+-- 5. Mostrar las órdenes de venta con su número, subtotal y una categoría de tamaño: ‘Pequeña’ si el subtotal es menor 
+--    a $1000, ‘Mediana’ si está entre $1000 y $5000, y ‘Grande’ si es mayor a $5000.
 --Tabla: Sales.SalesOrderHeader
 --Campos: SalesOrderID, SubTotal
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	SalesOrderID,
@@ -100,13 +99,12 @@ SELECT
 FROM
 	Sales.SalesOrderHeader;
 
-
-
-
---6. Mostrar los empleados y una columna que diga ‘Con vacaciones’ si tienen más de 0 horas disponibles, o ‘Sin vacaciones’ si tienen 0.
+------------------------------------------------------------------------------------------------------------------------
+--6. Mostrar los empleados y una columna que diga ‘Con vacaciones’ si tienen más de 0 horas disponibles,
+--   o ‘Sin vacaciones’ si tienen 0.
 --Tabla: HumanResources.Employee
 --Campos: BusinessEntityID, VacationHours
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	BusinessEntityID,
@@ -117,14 +115,12 @@ SELECT
 FROM
 	HumanResources.Employee;
 
-
-
-
-
--- 7. Mostrar el número del producto, su nombre y una columna que indique ‘Discontinuado’ si tiene fecha de fin de venta, o ‘Disponible’ si aún se sigue vendiendo.
+------------------------------------------------------------------------------------------------------------------------
+-- 7. Mostrar el número del producto, su nombre y una columna que indique ‘Discontinuado’ si tiene fecha de fin de venta, 
+--    o ‘Disponible’ si aún se sigue vendiendo.
 --Tabla: Production.Product
 --Campos: ProductNumber, Name, SellEndDate
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	ProductNumber,
@@ -136,13 +132,12 @@ SELECT
 FROM
 	Production.Product;
 
-
-
-
--- 8. Mostrar los empleados y una columna que indique si nacieron en los años 1960s, 1970s, 1980s o 'Otro', según su año de nacimiento.
+------------------------------------------------------------------------------------------------------------------------
+-- 8. Mostrar los empleados y una columna que indique si nacieron en los años 1960s, 1970s, 1980s o 'Otro', según su año 
+--    de nacimiento.
 --Tabla: HumanResources.Employee
 --Campos: BusinessEntityID, BirthDate
-
+------------------------------------------------------------------------------------------------------------------------
 
 SELECT
 	BusinessEntityId,
@@ -154,3 +149,6 @@ SELECT
 	END AS [Period]
 FROM
 	HumanResources.Employee;
+
+
+-- =====================================================================================================================
