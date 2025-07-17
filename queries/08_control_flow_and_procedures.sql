@@ -709,7 +709,7 @@ ON
 WHERE
 	pc.Name = @CategoriaNombre
 	AND
-	p.SellEndDate IS NULL;
+	p.SellEndDate IS NULL;	
 
 GO
 
