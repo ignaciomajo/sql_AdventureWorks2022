@@ -356,68 +356,272 @@ ORDER BY
 -- Tablas: Sales.Customer, Sales.SalesOrderHeader, Sales.SalesOrderDetail
 ------------------------------------------------------------------------------------------------------------------------
 
+-- Eliminar Trigger creado en otra instancia del proyecto a modo de prueba
+IF OBJECT_ID('Sales.TR_ModificacionesBonus', 'TR') IS NOT NULL
+	DROP TRIGGER Sales.TR_ModificacionesBonus;
 
+-- SELECT TOP 1 * FROM Sales.Customer;
+-- SELECT TOP 1 * FROM Sales.SalesOrderHeader;
+-- SELECT TOP 1 * FROM Sales.SalesOrderDetail;
+
+
+BEGIN TRY
+	BEGIN TRANSACTION
+
+		-- Generar nuevo cliente
+		INSERT INTO Sales.Customer(StoreID, TerritoryID,  rowguid)
+		VALUES (NULL, 1, NEWID());
+
+		-- Obtener el UNIQUEIDENTIFIER creado
+		DECLARE @NewCustomerID INT = SCOPE_IDENTITY();
+
+		-- Obtener IDs validos para generar la orden de venta
+		DECLARE @BillAddressID INT = (SELECT TOP 1 AddressID FROM Person.Address);
+		DECLARE @ShipMethodID INT = (SELECT TOP 1 ShipMethodID FROM Purchasing.ShipMethod);
+
+
+		-- Insertar un nuevo registro de orden de compra
+		INSERT INTO
+			Sales.SalesOrderHeader(RevisionNumber, OrderDate, DueDate, ShipDate, Status, OnlineOrderFlag, CustomerID,
+									BillToAddressID, ShipToAddressID, ShipMethodID, SubTotal, TaxAmt, Freight, rowguid, ModifiedDate)
+		VALUES 
+			(8, GETDATE(), DATEADD(DAY, 5, GETDATE()), GETDATE(), 5, 0, @NewCustomerID, @BillAddressID, @BillAddressID, @ShipMethodID, 
+			20000, 1916, 604.4, NEWID(), GETDATE());
+
+		-- Obtener IDs y precios validos para el registro de los detalles de la orden de compra
+		DECLARE @SalesOrderID INT = SCOPE_IDENTITY()
+		DECLARE @ProductID INT;
+		DECLARE @SpecialOfferID INT;
+		DECLARE @UnitPrice MONEY;
+
+		SELECT TOP 1
+			@ProductID = p.ProductID,
+			@UnitPrice = p.ListPrice,
+			@SpecialOfferID = sop.SpecialOfferID
+		FROM
+			Production.Product p
+		JOIN
+			Sales.SpecialOfferProduct sop
+		ON
+			p.ProductID = sop.ProductID
+		WHERE
+			ListPrice > 0;
+
+		-- Insertar nuevo registro en detalles de ordenes de compra
+		INSERT INTO 
+			Sales.SalesOrderDetail(SalesOrderID, CarrierTrackingNumber, OrderQty, ProductID, SpecialOfferID, UnitPrice, UnitPriceDiscount,
+									rowguid, ModifiedDate)
+		VALUES 
+			(@SalesOrderID, '9999-999C-99', 10, @ProductID, @SpecialOfferID, @UnitPrice, 0, NEWID(), GETDATE());
+
+		COMMIT TRANSACTION;
+		PRINT 'Transacción completada exitosamente';
+END TRY
+BEGIN CATCH
+	ROLLBACK TRANSACTION;
+	THROW;
+END CATCH;
 
 ------------------------------------------------------------------------------------------------------------------------
--- 12. Utilizar un cursor para actualizar las cantidades pedidas en las órdenes que tengan productos descontinuados.
--- Tablas: Sales.SalesOrderDetail, Production.Product
+-- 12. Utilizar un cursor para eliminar las órdenes que tengan productos descontinuados.
+-- Tablas: Sales.SalesOrderHeader, Sales.SalesOrderDetail, Production.Product
 ------------------------------------------------------------------------------------------------------------------------
 
+DECLARE @CurrSalesOrderID INT;
+DECLARE @Qty INT;
+DECLARE @SellEndDate DATETIME;
+DECLARE @OrderDate DATETIME;
+DECLARE @OrderProductID INT;
 
+DECLARE Cursor_ProductosDescontinuados CURSOR
+FOR
+	SELECT 
+		sod.SalesOrderID, sod.OrderQty, soh.OrderDate, sod.ProductID, p.SellEndDate
+	FROM
+		Sales.SalesOrderDetail sod
+	JOIN
+		Sales.SalesOrderHeader soh
+	ON
+		sod.SalesOrderID = soh.SalesOrderID
+	JOIN
+		Production.Product p
+	ON
+		sod.ProductID = p.ProductID;
+
+OPEN Cursor_ProductosDescontinuados
+FETCH NEXT FROM Cursor_ProductosDescontinuados
+INTO @CurrSalesOrderID, @Qty, @OrderDate, @OrderProductID, @SellEndDate
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	IF @OrderDate > @SellEndDate
+		BEGIN
+			DELETE FROM Sales.SalesOrderDetail
+			WHERE SalesOrderID = @CurrSalesOrderID AND ProductID = @OrderProductID
+		END
+	FETCH NEXT FROM Cursor_ProductosDescontinuados
+	INTO @CurrSalesOrderID, @Qty, @OrderDate, @OrderProductID, @SellEndDate
+END
+
+CLOSE Cursor_ProductosDescontinuados;
+DEALLOCATE Cursor_ProductosDescontinuados;
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 13. Calcular el ranking de productos más vendidos por año utilizando funciones OVER con RANK o DENSE_RANK.
 -- Tablas: Sales.SalesOrderDetail, Sales.SalesOrderHeader
 ------------------------------------------------------------------------------------------------------------------------
 
-
+SELECT
+	YEAR(soh.OrderDate) AS [Year],
+	sod.ProductID,
+	SUM(sod.LineTotal) AS [Total Vendido],
+	RANK() OVER (PARTITION BY YEAR(soh.OrderDate) ORDER BY SUM(sod.LineTotal) DESC) AS [Ranking]
+FROM
+	Sales.SalesOrderHeader soh
+JOIN
+	Sales.SalesOrderDetail sod
+ON
+	soh.SalesOrderID = sod.SalesOrderID
+GROUP BY
+	YEAR(soh.OrderDate), sod.ProductID
+ORDER BY
+	[Year], [Ranking];
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 14. Mostrar por cada territorio el total vendido y su porcentaje respecto del total general usando OVER.
 --Tablas: Sales.SalesTerritory, Sales.SalesOrderHeader
 ------------------------------------------------------------------------------------------------------------------------
 
-
+SELECT
+	TerritoryID,
+	Name,
+	SalesYTD AS [Venta Total],
+	SalesYTD / SUM(SalesYTD)  OVER() * 100 AS [Porcentaje Ventas]
+FROM
+	Sales.SalesTerritory
+ORDER BY
+	[Porcentaje Ventas] DESC;
 
 ------------------------------------------------------------------------------------------------------------------------
--- 15. Crear un PIVOT dinámico que muestre la suma de ventas por país y año.
---Tablas: Sales.SalesOrderHeader, Person.CountryRegion
-------------------------------------------------------------------------------------------------------------------------
-
-
-
-------------------------------------------------------------------------------------------------------------------------
--- 16. Simular un rollback parcial dentro de una transacción, registrando en una tabla temporal los registros no insertados.
+-- 15. Simular un rollback parcial dentro de una transacción, registrando en una tabla temporal los registros no insertados.
 --Tablas: a definir por el usuario
 ------------------------------------------------------------------------------------------------------------------------
 
+SELECT * FROM Productos;
 
+CREATE TABLE #NuevosProductosNoInsertados(
+	ProductID INT,
+	Error NVARCHAR(1000),
+	ErrorTimestamp DATETIME)
+	
+BEGIN TRY
+	BEGIN TRANSACTION
+
+	BEGIN TRY
+		INSERT INTO 
+			Productos(ProductID, ListPrice)
+		VALUES
+			(999, 1511.13);
+		SAVE TRANSACTION CHKPT1
+	END TRY
+	BEGIN CATCH
+		INSERT INTO #NuevosProductosNoInsertados
+		VALUES (999, ERROR_MESSAGE(), GETDATE())
+	END CATCH
+
+	BEGIN TRY
+		INSERT INTO
+			Productos(ProductID, ListPrice)
+		VALUES
+			(1000, 899.31)
+		SAVE TRANSACTION CHKPT2
+	END TRY
+	BEGIN CATCH
+		ROLLBACK TRANSACTION CHKPT1;
+		INSERT INTO #NuevosProductosNoInsertados
+		VALUES (1000, ERROR_MESSAGE(), GETDATE());
+	END CATCH
+		
+	BEGIN TRY
+		INSERT INTO
+			Productos(ProductID, ListPrice)
+		VALUES
+			(714, 1000)
+		SAVE TRANSACTION CHKPT3;
+	END TRY
+	BEGIN CATCH
+		ROLLBACK TRANSACTION CHKPT2;
+		INSERT INTO #NuevosProductosNoInsertados
+		VALUES (714, ERROR_MESSAGE(), GETDATE())
+	END CATCH
+COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+	RAISERROR('No se pudo insertar ningún registro', 16, 1)
+END CATCH;
+
+SELECT * FROM #NuevosProductosNoInsertados;
 
 ------------------------------------------------------------------------------------------------------------------------
--- 17. Usar UNPIVOT para convertir columnas de contacto (Email, Phone, etc.) en filas para facilitar su análisis.
---Tablas: Person.Person, Person.EmailAddress
-------------------------------------------------------------------------------------------------------------------------
-
-
-
-------------------------------------------------------------------------------------------------------------------------
--- 18. Usar funciones OVER para calcular la media móvil de los subtotales de orden en una ventana de 3 registros.
+-- 16. Usar funciones OVER para calcular la media móvil de los subtotales de orden en una ventana de 3 registros.
 -- Tablas: Sales.SalesOrderHeader
 ------------------------------------------------------------------------------------------------------------------------
 
-
+SELECT
+	SalesOrderID,
+	OrderDate,
+	SubTotal,
+	AVG(SubTotal) OVER (ORDER BY OrderDate
+						ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS [Moving Average (3)]
+FROM
+	Sales.SalesOrderHeader
 
 ------------------------------------------------------------------------------------------------------------------------
--- 19. Crear un cursor que recorra los empleados y les asigne un bono según sus años de servicio. 
+-- 17. Crear un cursor que recorra los empleados y les asigne un bono según sus años de servicio. 
 --     Insertar los resultados en una tabla temporal.
 -- Tablas: HumanResources.Employee
 ------------------------------------------------------------------------------------------------------------------------
 
+DROP TABLE IF EXISTS  #BonoEmpleados;
+
+CREATE TABLE #BonoEmpleados(
+	BusinessEntityID INT,
+	[Tenure (Years)] INT,
+	Bono MONEY)
+
+DECLARE @EmployeeID INT;
+DECLARE @Years INT;
+DECLARE @MaxDate DATE = (SELECT MAX(OrderDate) FROM Sales.SalesOrderHeader)
 
 
+DECLARE Cursor_EmployeeTenure CURSOR
+FOR
+	SELECT 
+		BusinessEntityID, 
+		DATEDIFF(YEAR, HireDate, @MaxDate)
+	FROM
+		HumanResources.Employee;
 
+OPEN Cursor_EmployeeTenure
+FETCH NEXT FROM Cursor_EmployeeTenure
+INTO @EmployeeID, @Years
 
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	INSERT INTO #BonoEmpleados (BusinessEntityID, [Tenure (Years)], Bono)
+	SELECT
+		@EmployeeID,
+		@Years,
+		(CASE WHEN @Years < 10 THEN 100
+			  WHEN @Years BETWEEN 10 AND 15 THEN 200
+			  ELSE 350 END);
+	FETCH NEXT FROM Cursor_EmployeeTenure
+	INTO @EmployeeID, @Years
+END
+CLOSE Cursor_EmployeeTenure
+DEALLOCATE Cursor_EmployeeTenure;
 
+SELECT * FROM #BonoEmpleados;
 
 
 -- =====================================================================================================================
