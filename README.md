@@ -62,6 +62,8 @@ Para poder ejecutar los scripts, necesitarás tener instalado:
 * **Microsoft SQL Server** (cualquier versión compatible con `AdventureWorks2022`).
 * La base de datos **`AdventureWorks2022`** restaurada en tu instancia de SQL Server. Puedes descargar el archivo de respaldo (`.bak`) desde el sitio oficial de Microsoft.
 
+<p><a href="https://learn.microsoft.com/es-es/sql/samples/adventureworks-install-configure?view=sql-server-ver17&tabs=ssms">Bases de datos de ejemplo AdventureWorks</a></p>
+
 ## 5. Habilidades SQL Demostradas ✍️
 
 Este proyecto te permitirá observar y comprender el dominio en las siguientes áreas clave de SQL:
