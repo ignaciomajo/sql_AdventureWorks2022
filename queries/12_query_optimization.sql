@@ -52,6 +52,7 @@ Cost 100%
 Index Assistant sugiere índice en OrderDate INCLUDE CustomerID y SubTotal
 */
 
+DROP INDEX IF EXISTS IX_SOH_OrderDate;
 
 CREATE NONCLUSTERED INDEX IX_SOH_OrderDate
 ON Sales.SalesOrderHeader(OrderDate)
@@ -257,10 +258,14 @@ Cost 21%
 
 SELECT TOP 1 * FROM Production.Product;
 
+DROP INDEX IF EXISTS IX_Product_ProdSucbCatID;
+
 CREATE NONCLUSTERED INDEX IX_Product_ProdSubCatID
 ON Production.Product(ProductSubcategoryID)
 INCLUDE
 	(Name, ProductNumber, ListPrice);
+
+DROP INDEX IF EXISTS IX_ProductSubcategory_CatID;
 
 CREATE NONCLUSTERED INDEX IX_ProductSubcategory_CatID
 ON Production.ProductSubcategory(ProductCategoryID)
@@ -361,6 +366,8 @@ Cost 30%
 */
 
 SELECT TOP 1 * FROM Sales.SalesOrderHeader;
+
+DROP INDEX IF EXISTS IX_SOH_TerritoryID;
 
 CREATE NONCLUSTERED INDEX IX_SOH_TerritoryID
 ON Sales.SalesOrderHeader(TerritoryID)
@@ -531,6 +538,8 @@ Cost 15%
 El Index Assistant sugiere la creación de un índice en Sales.Customer sobre PersonID con un impacto de 16.16%
 */
 
+DROP INDEX IF EXISTS IX_Customer_PersonID;
+
 CREATE NONCLUSTERED INDEX IX_Customer_PersonID
 ON Sales.Customer(PersonID);
 
@@ -591,15 +600,57 @@ Cost 16%
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 8. Mostrar el nombre del producto y su proveedor.
--- Tablas: Production.ProductVendor, Purchasing.Vendor, Production.Product
+-- Tablas: Purchasing.ProductVendor, Purchasing.Vendor, Production.Product
 -- Objetivo: Revisión de JOINs sobre múltiples tablas y selección de campos.
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	El motor se beneficia del índice creado previamente sobre la tabla Production.Product en la columna 
+	ProductSubcategoryID a pesar de que esta no es utilizada en la consulta.
+	La tabla Purchasing.ProductVendor ya contaba con índice sobre BusinessEntityID, por lo que no fue necesario generarlo
+	Los costos más elevados de la consulta corresponden a los joins.
+	El Index Assistant no devuelve ninguna sugerencia.
 =======================================================================================================================*/
 
+SELECT TOP 1 * FROM Purchasing.ProductVendor;
+SELECT TOP 1 * FROM Purchasing.Vendor;
 
+SELECT 
+	p.Name, 
+	pv.Name
+FROM
+	Production.Product p
+JOIN
+	Purchasing.ProductVendor ppv
+ON
+	p.ProductID = ppv.ProductID
+JOIN
+	Purchasing.Vendor pv
+ON
+	ppv.BusinessEntityID = pv.BusinessEntityID;
+
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 60 ms.
+
+Execution Plan:
+Index Scan - IX_Product_ProdSubCatID
+Cost 12%
+0.0001s
+
+Hash Match (Inner Join) 
+Cost 40%
+0.002s
+
+Hash Match (Inner Join) - Previo al retorno de tabla
+Cost 37%
+0.003s
+
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 9. Listar los productos que no tienen un SpecialOffer asignado.
@@ -608,11 +659,83 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	La principal diferencia entre ambas queries es que utilizando NOT EXISTS, el mayor coste de la consulta se concentra
+	al hacer el MATCH, es decir, cuando se seleccionan las filas de Production.Product que no forman parte de 
+	SpecialOfferProduct.
+	Utilizando LEFT JOIN...IS NULL, el costo de la consulta esta enconcentrado al escanear las tablas, no en el filtrado.
+	En este caso, el tiempo de reloj (elapsed time) es menor en la consulta NOT EXISTS, por lo que esta consulta muestra
+	mejor rendimiento.
 =======================================================================================================================*/
 
+SELECT TOP 1 * FROM Sales.SpecialOfferProduct;
 
+-- NOT EXISTS
 
+SELECT 
+	ProductID
+FROM
+	Production.Product p
+WHERE
+	NOT EXISTS (SELECT 1
+				FROM Sales.SpecialOfferProduct sop
+				WHERE p.ProductID = sop.ProductID);
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 30 ms
+
+Execution Plan:
+Index Scan - IX_SpecialOfferProduct_ProductID
+Cost 12%
+0.0000s
+
+Index Scan - AK_Product_rowguid
+Cost 16%
+0.000s
+
+Hash Match (Right Anti Semi Join) 
+Cost 71%
+0.001s
+
+*/
+
+-- LEFT JOIN
+
+SELECT
+	p.ProductID
+FROM
+	Production.Product p
+LEFT JOIN
+	Sales.SpecialOfferProduct sop
+ON
+	p.ProductID = sop.ProductID
+WHERE
+	sop.SpecialOfferID IS NULL;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 36 ms.
+
+Execution Plan:
+Clustered Index Scan - PK_Product_ProductID
+Cost 64%
+0.000s
+
+Index Scan - IX_SpecialOfferProduct_ProductID
+Cost 11%
+0.000s
+
+Merge Join (Left Outer Join)
+Cost 23%
+0.000s
+
+*/
 ------------------------------------------------------------------------------------------------------------------------
 -- 10. Mostrar el total vendido por año.
 -- Tabla: Sales.SalesOrderHeader
@@ -620,11 +743,72 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	Se observa que en ambas consultas, el coste esta distribuido de igual manera:
+	48% para el escaneo de la tabla utilizando el índice creado en TerritoryID
+	52% para realizar la función de agregación.
+	Sin embargo, la consulta que utiliza DATEPART(YEAR, date) muestra mejor tiempo de ejecución.
+	DATEPART
+	Index Scan = 0.007s
+	Hash Match (Aggregate) = 0.017s
+	YEAR
+	Index Scan = 0.010s
+	Hash Match (Aggregate) = 0.022s
 =======================================================================================================================*/
 
+SELECT
+	DATEPART(YEAR, soh.OrderDate) AS [Year],
+	SUM(soh.TotalDue) AS [Total]
+FROM
+	Sales.SalesOrderHeader soh
+GROUP BY
+	DATEPART(YEAR, soh.OrderDate);
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 15 ms,  elapsed time = 39 ms.
+
+Execution Plan:
+Index Scan - IX_SOH_TerritoryID
+Cost 48%
+0.007s
 
 
+Hash Match (Aggregate)
+Cost 52%
+0.017s
+
+*/
+
+SELECT
+	YEAR(soh.OrderDate) AS [Year],
+	SUM(soh.TotalDue) AS [Total]
+FROM
+	Sales.SalesOrderHeader soh
+GROUP BY
+	YEAR(soh.OrderDate);
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 15 ms,  elapsed time = 36 ms.
+
+Execution Plan:
+Index Scan - IX_SOH_TerritoryID
+Cost 48%
+0.010s
+
+
+Hash Match (Aggregate)
+Cost 52%
+0.022s
+
+
+*/
 ------------------------------------------------------------------------------------------------------------------------
 -- 11. Mostrar productos vendidos más de 500 veces.
 -- Tabla: Sales.SalesOrderDetail
@@ -632,34 +816,165 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	Dado que el filtro debe hacerse de acuerdo a la agregación, no es posible filtrar las filas antes de agrupar.
+	El escaneo de la tabla corresponde al 83% del costo total, el cual utiliza el índice creado sobre
+	Sales.SalesOrderDetail ProductID.
+	La agregación consume 17% del costo total, pero su tiempo de ejecución es mayor al escaneo
+	A su vez, el filtro no tiene un costo significativo, pero su tiempo de ejecución es igual a la operación de
+	agregación.
 =======================================================================================================================*/
 
+SELECT TOP 1 * FROM Sales.SalesOrderDetail;
 
+SELECT
+	ProductID,
+	COUNT(*) AS [Veces Vendido]
+FROM
+	Sales.SalesOrderDetail
+GROUP BY
+	ProductID
+HAVING
+	COUNT(*) > 500;
+
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 31 ms,  elapsed time = 81 ms.
+
+Execution Plan:
+Index Scan - IX_SalesOrderDetail_ProductID
+Cost 83%
+0.036s
+
+
+Stream Aggregate (Aggregate)
+Cost 17%
+0.045s
+
+Filter
+Cost 0%
+0.045s
+
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
--- 12. Mostrar los empleados cuyo nombre empiece con "A".
+-- 12. Mostrar los empleados cuyo nombre empiece o terminen con "A".
 -- Tablas: Person.Person
 -- Objetivo: Análisis de LIKE con comodín al final vs al principio.
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	Dado que ambas consultas devuelven un cantidad diferente de filas, su comparación no estará balanceada.
+	Sin embargo, cabe destacar que el tiempo de ejecución en CPU para la consulta que utiliza LIKE 'A%' es 0,
+	mientras que aquella que usa el comodín al principio: LIKE '%a' tiene un tiempo de ejecución en CPU de 31ms
+	Esto es un indicador de mayor costo de procesamiento debido a que la consulta LIKE '%a' no es SARGable.
+	A pesar de esto, ambas se benefician del índice ya presente en la base de datos sobre la tabla Person.Person
+	IX_Person_LastName_FirstName_MiddleName
 =======================================================================================================================*/
 
+SELECT
+	pp.FirstName,
+	pp.LastName
+FROM
+	Person.Person pp
+JOIN
+	HumanResources.Employee hr
+ON
+	pp.BusinessEntityID = hr.BusinessEntityID
+WHERE
+	pp.FirstName LIKE 'A%';
 
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(16 rows affected)
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 28 ms.
+
+Execution Plan:
+Index Scan - IX_Person_LastName
+Cost 66%
+0.004s
+
+Hash Match (Inner Join)
+Cost 31%
+0.005s
+*/
+
+SELECT
+	pp.FirstName,
+	pp.LastName
+FROM
+	Person.Person pp
+JOIN
+	HumanResources.Employee hr
+ON
+	pp.BusinessEntityID = hr.BusinessEntityID
+WHERE
+	pp.FirstName LIKE '%a';
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(29 rows affected)
+ SQL Server Execution Times:
+   CPU time = 31 ms,  elapsed time = 69 ms.
+
+Execution Plan:
+Index Scan - IX_Person_LastName
+Cost 64%
+0.030s
+
+Hash Match (Inner Join)
+Cost 31%
+0.032s
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 13. Mostrar la cantidad de vendedores activos por territorio.
 -- Tablas: Sales.SalesPerson
--- Objetivo: Filtrar NULLs, aplicar COUNT y evaluar índices en campos JOIN.
+-- Objetivo: Filtrar NULLs, aplicar COUNT y evaluar índices.
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	La consulta se beneficia del índice ya existente en la tabla Sales.SalesPerson sobre la columna BusinessEntityID
+	El mayor costo corresponde al ordenamiento de las filas resultantes realizado por defecto, ya que no se incluye
+	la cláusula ORDER BY dentro de la consulta.
 =======================================================================================================================*/
 
+SELECT
+	TerritoryID,
+	COUNT(*) AS [Cantidad Vendedores]
+FROM
+	Sales.SalesPerson
+WHERE
+	TerritoryID IS NOT NULL
+GROUP BY
+	TerritoryID;
 
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 23 ms
+
+Execution Plan:
+Clustered Index Scan - PK_SalesPerson_BusinessEntityID
+Cost 22%
+0.000s
+
+Sort
+Cost 78%
+0.000s
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 14. Mostrar el total de ventas por producto.
@@ -668,11 +983,36 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	Esta consulta resulta costosa ya que corresponde a una tabla de hechos.
+	El mayor costo se concentra en el escaneo de la tabla, el cual utiliza el indice creado sobre ProductID
+	No existe mayor optimización para esta consulta ya que crear un indice sobre LineTotal resultaría en costo adicional
+	de almacenamiento y mantenimiento, y en relentización al momento de escritura.
 =======================================================================================================================*/
 
+SELECT
+	ProductID,
+	SUM(LineTotal) AS [Total Vendido]
+FROM
+	Sales.SalesOrderDetail
+GROUP BY
+	ProductID;
 
+/*
+-- OBSERVACIONES
 
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 62 ms,  elapsed time = 97 ms.
+
+Execution Plan:
+Index Scan - PK_SalesPerson_BusinessEntityID
+Cost 90%
+0.035s
+
+Stream Aggregate (Aggregate)
+Cost 9%
+0.059s
+*/
 ------------------------------------------------------------------------------------------------------------------------
 -- 15. Mostrar el promedio de descuento por cliente.
 -- Tablas: Sales.SalesOrderDetail, Sales.SalesOrderHeader
@@ -680,10 +1020,135 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	Se reduce la cantidad de filas devueltas a solo aquellas que cuenten con descuento distinto de 0.
+	El uso de CTE produce un peor rendimiento que la consulta directa. 
 =======================================================================================================================*/
 
+SELECT TOP 1 * FROM Sales.SalesOrderDetail;
+SELECT TOP 1 * FROM Sales.SalesOrderHeader;
 
+SELECT
+	soh.CustomerID,
+	AVG(sod.UnitPriceDiscount) AS [Descuento Promedio]
+FROM
+	Sales.SalesOrderHeader soh
+JOIN
+	Sales.SalesOrderDetail sod
+ON
+	soh.SalesoRderID = sod.SalesOrderID
+GROUP BY
+	soh.CustomerID;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(19119 rows affected)
+ SQL Server Execution Times:
+   CPU time = 203 ms,  elapsed time = 283 ms.
+
+Execution Plan:
+Index Scan - IX_SOD_ProductID
+Cost 28%
+0.037s
+
+Hash Match (Inner Join)
+Cost 38%
+0.101s
+
+Hash Match (Aggregate)
+Cost 31%
+0.164s
+*/
+
+SELECT
+	soh.CustomerID,
+	AVG(sod.UnitPriceDiscount) AS [Descuento Promedio]
+FROM
+	Sales.SalesOrderHeader soh
+JOIN
+	Sales.SalesOrderDetail sod
+ON
+	soh.SalesoRderID = sod.SalesOrderID
+GROUP BY
+	soh.CustomerID
+HAVING
+	AVG(sod.UnitPriceDiscount) <> 0;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(351 rows affected)
+ SQL Server Execution Times:
+   CPU time = 156 ms,  elapsed time = 218 ms.
+
+Execution Plan:
+Index Scan - IX_SOD_ProductID
+Cost 28%
+0.038s
+
+Hash Match (Inner Join)
+Cost 38%
+0.106s
+
+Hash Match (Aggregate)
+Cost 31%
+0.164s
+
+Filter
+Cost 0%
+0.170s
+*/
+
+WITH CTE_DescuentoPorCliente 
+AS(
+	SELECT
+		soh.CustomerID,
+		AVG(sod.UnitPriceDiscount) AS [Descuento Promedio]
+	FROM
+		Sales.SalesOrderHeader soh
+	JOIN
+		Sales.SalesOrderDetail sod
+	ON
+		soh.SalesoRderID = sod.SalesOrderID
+	GROUP BY
+		soh.CustomerID)
+
+SELECT * 
+FROM
+	CTE_DescuentoPorCliente
+WHERE
+	[Descuento Promedio] <> 0;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(351 rows affected)
+ SQL Server Execution Times:
+   CPU time = 172 ms,  elapsed time = 224 ms.
+
+Execution Plan:
+Index Scan - IX_SOD_ProductID
+Cost 28%
+0.048s
+
+Hash Match (Inner Join)
+Cost 38%
+0.118s
+
+Hash Match (Aggregate)
+Cost 31%
+0.179s
+
+Filter
+Cost 0%
+0.181s
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 16. Mostrar los clientes con más de 3 pedidos en los últimos 2 años.
@@ -692,10 +1157,48 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	Para una consulta SARGable se establecio una variable con la fecha de 2 años hacia atras desde la última venta.
+	La consulta al ser SARGable, se beneficia del índice creado sobre OrderDate, ya que los filtros de tiempo son habituales.
 =======================================================================================================================*/
 
+DECLARE @MaxDate DATE = (SELECT MAX(OrderDate) FROM Sales.SalesOrderHeader)
+DECLARE @MinDate DATE = DATEADD(YEAR, -2, @MaxDate)
 
+SELECT
+	CustomerID,
+	COUNT(*) AS [Cantidad Pedidos]
+FROM
+	Sales.SalesOrderHeader
+WHERE
+	OrderDate > @MinDate
+GROUP BY
+	CustomerID
+HAVING
+	COUNT(*) > 3;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(650 rows affected)
+ SQL Server Execution Times:
+   CPU time = 63 ms,  elapsed time = 164 ms.
+
+Execution Plan:
+Index Seek - IX_SOH_OrderDate
+Cost 21%
+0.007s
+
+
+Hash Match (Aggregate)
+Cost 77%
+0.022s
+
+Filter
+Cost 2%
+0.025s
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 17. Detectar productos con múltiples proveedores.
@@ -704,10 +1207,41 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	La consulta concentra la mayor parte de su costo en el escaneo de la tabla a través del índice de su PK.
+	El Index Assistant no sugiere ninguna modificación.
 =======================================================================================================================*/
 
+SELECT
+	ProductID,
+	COUNT(*) AS [Cantidad Proveedores]
+FROM
+	Purchasing.ProductVendor
+GROUP BY
+	ProductID
+HAVING
+	COUNT(*) > 1;
 
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 55 ms.
+
+Execution Plan:
+Clustered Index Scan - PK_ProductVendor_ProductID_BusinessEntityID
+Cost 93%
+0.000s
+
+
+Stream Aggregate (Aggregate)
+Cost 6%
+0.000s
+
+Filter
+Cost 2%
+0.000s
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 18. Calcular el total de ventas para cada combinación de cliente y territorio.
@@ -716,23 +1250,85 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	La consulta ejecuta el escaneo de la tabla sobre la PK de SalesOrderHeader [SalesOrderID].
+	Index Assistant no sugiere ningún cambio, por lo que la consulta ya está optimizada.
 =======================================================================================================================*/
 
+SELECT
+	TerritoryID,
+	CustomerID,
+	SUM(TotalDue) AS Total
+FROM
+	Sales.SalesOrderHeader
+GROUP BY
+	CustomerID, TerritoryID;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 16 ms,  elapsed time = 174 ms.
+
+Execution Plan:
+Clustered Index Scan - PK_SalesOrderHeader_SalesOrderID
+Cost 35%
+0.016s
 
 
+Hash Match (Aggregate)
+Cost 65%
+0.038s
+
+*/
 ------------------------------------------------------------------------------------------------------------------------
--- 19. Mostrar las 5 categorías con más productos.
--- Tablas: Production.Product, Production.ProductSubcategory, Production.ProductCategory
--- Objetivo: TOP y rendimiento sobre múltiples niveles de JOIN.
+-- 19. Mostrar las 5 subcategorías con más productos.
+-- Tablas: Production.Product, Production.ProductSubcategory
+-- Objetivo: TOP y rendimiento sobre JOIN.
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
-
+	La consulta ya se beneficia del índice previamente creado sobre la tabla Production.Product en la columna
+	ProductSubcategoryID.
+	El mayor costo se concentra en el ordenamiento de las filas para la selección de TOP 5.
 =======================================================================================================================*/
 
+SELECT TOP 5
+	psc.ProductSubcategoryID,
+	COUNT(*) AS [Cantidad Productos]
+FROM
+	Production.ProductSubcategory psc
+JOIN
+	Production.Product p
+ON
+	psc.ProductSubcategoryID = p.ProductSubcategoryID
+GROUP BY
+	psc.ProductSubcategoryID
+ORDER BY
+	[Cantidad Productos]  DESC;
 
 
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 25 ms.
+
+Execution Plan:
+Index Scan - IX_Product_ProdSubCatID
+Cost 32%
+0.000s
+
+Clustered Index Scan - PK_ProductSubcategory_ProductSubcategoryID
+Cost 17%
+0.000s
+
+Sort
+Cost 49%
+0.000s
+
+*/
 ------------------------------------------------------------------------------------------------------------------------
 -- 20. Mostrar ventas por tipo de tarjeta de crédito.
 -- Tablas: Sales.SalesOrderHeader, Sales.CreditCard
@@ -743,7 +1339,20 @@ Cost 16%
 
 =======================================================================================================================*/
 
+SELECT TOP 1 * FROM Sales.SalesOrderHeader;
+SELECT TOP 1 * FROM Sales.CreditCard;
 
+SELECT
+	cd.CardType,
+	SUM(soh.TotalDue) AS [Total]
+FROM
+	Sales.CreditCard cd
+JOIN
+	Sales.SalesOrderHeader soh
+ON
+	cd.CreditCardID = soh.CreditCardID
+GROUP BY
+	cd.CardType;
 
 ------------------------------------------------------------------------------------------------------------------------
 -- 21. Comparar el uso de CTE y subconsulta para calcular ventas totales por cliente.
@@ -752,11 +1361,76 @@ Cost 16%
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
+	Ambas consultas utilizan el índice de PK en SalesOrderID.
+	Sin embargo, el query que utiliza una subconsulta muestra un mejor desempeño, especialmente en la operación de
+	agregación y tiempo real de ejecución.
+	CTE: Hash Match (Aggregate) = 0.135s | elapsed time = 215ms
+	Subconsulta: Hash Match (Aggregate) = 0.032s | elapsed time = 108ms
 
 =======================================================================================================================*/
 
+WITH CTE_TotalCliente
+AS (
+	SELECT
+		CustomerID,
+		SUM(TotalDue) AS [Total]
+	FROM
+		Sales.SalesOrderHeader
+	GROUP BY
+		CustomerID)
 
+SELECT * FROM CTE_TotalCliente;
 
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(19119 rows affected)
+ SQL Server Execution Times:
+   CPU time = 31 ms,  elapsed time = 215 ms.
+
+Execution Plan:
+Clustered Index Scan - PK_SalesOrderHeader_SalesOrderID
+Cost 55%
+0.016s
+
+Hash Match (Aggregate)
+Cost 44%
+0.135s
+
+*/
+
+SELECT 
+	CustomerID, Total
+FROM
+	(SELECT
+		CustomerID,
+		SUM(TotalDue) AS Total
+	 FROM
+		Sales.SalesOrderHeader
+	 GROUP BY
+		CustomerID) AS TotalCliente;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+
+(19119 rows affected)
+ SQL Server Execution Times:
+   CPU time = 32 ms,  elapsed time = 108 ms.
+
+Execution Plan:
+Clustered Index Scan - PK_SalesOrderHeader_SalesOrderID
+Cost 55%
+0.013s
+
+Hash Match (Aggregate)
+Cost 44%
+0.032s
+
+*/
 ------------------------------------------------------------------------------------------------------------------------
 -- 22. Mostrar productos sin ventas en 2014.
 -- Tablas: Production.Product, Sales.SalesOrderDetail, Sales.SalesOrderHeader
@@ -767,43 +1441,112 @@ Cost 16%
 
 =======================================================================================================================*/
 
+SELECT 
+    p.ProductID,
+    p.Name
+FROM 
+    Production.Product p
+WHERE 
+    NOT EXISTS (
+        SELECT 1
+        FROM 
+			Sales.SalesOrderDetail sod
+        JOIN 
+			Sales.SalesOrderHeader soh
+        ON 
+			sod.SalesOrderID = soh.SalesOrderID
+        WHERE 
+            sod.ProductID = p.ProductID
+            AND soh.OrderDate BETWEEN '2014-01-01' AND '2014-12-31'
+    );
 
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 62 ms,  elapsed time = 115 ms.
+
+Execution Plan:
+Index Seek - IX_SOH_OrderDate
+Cost 4%
+0.004s
+
+
+Hash Match (Inner Join)
+Cost 53%
+0.066s
+
+
+Hash Math (Left Anti Semi Join)
+Cost 18%
+0.077s
+
+*/
 
 ------------------------------------------------------------------------------------------------------------------------
--- 23. Identificar cuellos de botella en una consulta con múltiples JOINs y filtros por fechas.
--- Objetivo: Ejecutar con STATISTICS IO y TIME y analizar plan de ejecución.
--- Consulta: libre.
-------------------------------------------------------------------------------------------------------------------------
-/* =====================================================================================================================
--- Insights/Justificación: 
-
-=======================================================================================================================*/
-
-
-
-------------------------------------------------------------------------------------------------------------------------
--- 24. Crear un índice adecuado para mejorar el rendimiento de una consulta de tu elección.
--- Objetivo: Identificar columnas utilizadas en WHERE, JOIN y SELECT.
-------------------------------------------------------------------------------------------------------------------------
-/* =====================================================================================================================
--- Insights/Justificación: 
-
-=======================================================================================================================*/
-
-
-
-------------------------------------------------------------------------------------------------------------------------
--- 25. Comparar el uso de índices existentes con FORCESEEK y FORCESCAN.
+-- 23. Comparar el uso de índices existentes con FORCESEEK y FORCESCAN.
 -- Tabla: A elección.
--- Objetivo: Experimentar con sugerencias al optimizador.
+-- Objetivo: Experimentar con sugerencias del optimizador.
 ------------------------------------------------------------------------------------------------------------------------
 /* =====================================================================================================================
 -- Insights/Justificación: 
+	Al usar FORCESCAN, SQL Server recorre toda la tabla ignorando los índices disponibles, lo cual es ineficiente si hay
+	pocos registros que cumplen la condición de filtrado (WHERE).
 
+	Al usar FORCESEEK, SQL Server aprovecha el índice sobre SalesOrderID (o clave primaria de la tabla consultada) para acceder 
+	directamente a las filas relevantes, haciendo la búsqueda mucho más eficiente.
 =======================================================================================================================*/
 
+-- Consulta con FORCESCAN
+SELECT 
+	SalesOrderID, 
+	ProductID, 
+	OrderQty
+FROM 
+	Sales.SalesOrderDetail WITH (FORCESCAN)
+WHERE 
+	SalesOrderID = 43659;
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 15 ms,  elapsed time = 32 ms.
+
+Execution Plan:
+Index Scan - IX_SOD_ProductID
+Cost 100%
+0.031s
 
 
+*/
 
+-- Consulta con FORCESEEK
+SELECT 
+	SalesOrderID, 
+	ProductID, 
+	OrderQty
+FROM 
+	Sales.SalesOrderDetail WITH (FORCESEEK)
+WHERE 
+	SalesOrderID = 43659;
+
+
+/*
+-- OBSERVACIONES
+
+Tiempo de ejecución:
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 1 ms.
+
+Execution Plan:
+Clustered Index Seek - PK_SalesOrderDetail_SalesOrderID_SalesOrderDetailID
+Cost 100%
+0.001s
+
+
+*/
 
 --======================================================================================================================
